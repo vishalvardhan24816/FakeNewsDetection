@@ -1,0 +1,79 @@
+# ----- Python -----
+__pycache__/
+*.py[cod]
+*.pyo
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ----- Virtual environments / interpreter dirs -----
+venv/
+env/
+ENV/
+.venv/
+pyvenv.cfg
+Scripts/
+share/
+include/
+lib2to3/
+
+# ----- IDEs / editors -----
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# ----- Secrets / local config -----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ----- Project-specific large model artifacts (NOT committed) -----
+# Hugging Face model snapshots (multi-GB each)
+basenlimean/
+dbmbz/
+lighteternal/
+
+# Custom-trained pickled models / vectorizers (regenerable from training/)
+mlmodels/
+vectorizers/
+
+# OCR / scratch images
+images/
+
+# Old scratch text dumps
+current.txt
+current2.txt
+current3.txt
+texts/
+textfiles/
+imp_files/
+fornow/
+styles/
+
+# Vendored / extracted package sources sitting in repo root
+pyBigWig/
+pygooglenews-0.1.2/
+selenium/
+
+# ----- Logs / runtime -----
+*.log
+logs/

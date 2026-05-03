@@ -6,8 +6,10 @@ in sequence and only marks a headline as **real** if it passes all
 five.
 
 This repository is a refactor of an older (2023) college project. The
-original code lives untouched in [`archive/`](archive/) for reference;
-the active package is [`fakenews_detector/`](fakenews_detector/).
+active package is [`fakenews_detector/`](fakenews_detector/). The
+original messy code is preserved in the very first git commit
+(`Initial baseline before refactor`) — `git show` it if you ever need
+to look at the old implementations.
 
 ## The 5 checks
 
@@ -136,7 +138,6 @@ fakenews_detector/
 training/
     train_clickbait.py     # rebuild mlmodels/clickbaitmodel.pkl
 
-archive/                   # original 3-year-old code (preserved, not used)
 datasets/                  # CSVs used by the training scripts
 mlmodels/                  # trained .pkl artifacts (gitignored)
 vectorizers/               # fitted vectorizers (gitignored)
@@ -161,8 +162,22 @@ basenlimean/, dbmbz/, lighteternal/   # HF model snapshots (gitignored)
 
 ## What changed in the refactor
 
-See [`archive/README.md`](archive/README.md) for the old → new
-mapping. Highlights:
+Highlights vs. the original (recoverable from the first git commit):
+
+| Old                                           | New                                              |
+| --------------------------------------------- | ------------------------------------------------ |
+| `titletest.checkTitle`                        | `fakenews_detector.FakeNewsValidator`            |
+| `titletest.checkTitle.spelling_mistakes`      | `fakenews_detector.checks.SpellingCheck`         |
+| `titletest.checkTitle.classify_clickbait`    | `fakenews_detector.checks.ClickbaitCheck`        |
+| `titletest.checkTitle.subjective_test`        | `fakenews_detector.checks.SubjectivityCheck`     |
+| `titletest.checkTitle.is_newstitle`           | `fakenews_detector.checks.NewsTitleCheck`        |
+| `titletest.checkTitle.present_on_google`      | `fakenews_detector.checks.WebPresenceCheck`      |
+| `right.check_similarity6`                     | `fakenews_detector.nlp.similarity.llm_contextual_match` |
+| `similarity.calculate_sentence_similarity`    | `fakenews_detector.nlp.similarity.cosine_similarity_score` |
+| Duplicated preprocessing in clickbait/isnewstitle | `fakenews_detector.nlp.preprocessing`        |
+| `clickbait_model.py` (training)               | `training/train_clickbait.py`                    |
+
+Behavioral / quality wins:
 
 - Single 230-line `checkTitle` god-class → 5 small `Check` subclasses
 - Duplicated preprocessing in `clickbait.py` and `isnewstitle.py`
@@ -171,5 +186,7 @@ mapping. Highlights:
 - Hardcoded API keys / passwords → `.env` (and scrubbed from history)
 - Globals + bare `except:` + `print` → typed dataclasses + targeted
   exceptions + structured `logging`
-- Flask UI / chatbot / OCR / URL-security / social-DM features moved
-  to `archive/` (out of scope for this refactor)
+- Out-of-scope features (Flask UI, FAQ chatbot, OCR, URL security,
+  pygooglenews feed, contact-email + social-DM notifier) were dropped
+  in this refactor. They still exist in the very first git commit if
+  you ever need them back.

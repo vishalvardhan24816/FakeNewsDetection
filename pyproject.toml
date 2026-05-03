@@ -28,4 +28,4 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 include = ["fakenews_detector*", "training*"]
-exclude = ["archive*", "tests*"]
+exclude = ["tests*"]

@@ -19,6 +19,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent
+ARTIFACTS_ROOT: Path = PROJECT_ROOT / "artifacts"
+HF_MODELS_ROOT: Path = ARTIFACTS_ROOT / "hf_models"
+CLASSIFIERS_ROOT: Path = ARTIFACTS_ROOT / "classifiers"
+VECTORIZERS_ROOT: Path = ARTIFACTS_ROOT / "vectorizers"
 
 
 @dataclass(frozen=True)
@@ -26,15 +30,15 @@ class Settings:
     """All tunable knobs for the validator in one place."""
 
     # ----- Local model directories (Hugging Face snapshots on disk) -----
-    ner_model_dir: Path = PROJECT_ROOT / "dbmbz"
-    subjectivity_model_dir: Path = PROJECT_ROOT / "lighteternal"
-    sentence_embedding_model_dir: Path = PROJECT_ROOT / "basenlimean"
+    ner_model_dir: Path = HF_MODELS_ROOT / "dbmbz"
+    subjectivity_model_dir: Path = HF_MODELS_ROOT / "lighteternal"
+    sentence_embedding_model_dir: Path = HF_MODELS_ROOT / "basenlimean"
 
     # ----- Custom-trained classifiers / vectorizers -----
-    clickbait_model_path: Path = PROJECT_ROOT / "mlmodels" / "impclickbait.pkl"
-    clickbait_vectorizer_path: Path = PROJECT_ROOT / "vectorizers" / "vectorizer.pkl"
-    news_title_model_path: Path = PROJECT_ROOT / "mlmodels" / "wewill.pkl"
-    news_title_vectorizer_path: Path = PROJECT_ROOT / "vectorizers" / "wevec.pkl"
+    clickbait_model_path: Path = CLASSIFIERS_ROOT / "impclickbait.pkl"
+    clickbait_vectorizer_path: Path = VECTORIZERS_ROOT / "vectorizer.pkl"
+    news_title_model_path: Path = CLASSIFIERS_ROOT / "wewill.pkl"
+    news_title_vectorizer_path: Path = VECTORIZERS_ROOT / "wevec.pkl"
 
     # ----- 5th-check thresholds -----
     spelling_max_misspell_ratio: float = 0.5

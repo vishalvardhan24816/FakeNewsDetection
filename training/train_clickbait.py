@@ -28,7 +28,7 @@ from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import MultinomialNB
 
-from fakenews_detector.config import PROJECT_ROOT
+from fakenews_detector.config import CLASSIFIERS_ROOT, PROJECT_ROOT
 from fakenews_detector.logging_setup import configure_logging
 from fakenews_detector.nlp.preprocessing import (
     lemmatize,
@@ -42,7 +42,7 @@ from fakenews_detector.nlp.preprocessing import (
 log = logging.getLogger(__name__)
 
 DATASET_PATH = PROJECT_ROOT / "datasets" / "clickbait_data.csv"
-MODEL_OUT_PATH = PROJECT_ROOT / "mlmodels" / "clickbaitmodel.pkl"
+MODEL_OUT_PATH = CLASSIFIERS_ROOT / "clickbaitmodel.pkl"
 
 
 def _ensure_stopwords() -> set:

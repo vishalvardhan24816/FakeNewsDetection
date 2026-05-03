@@ -47,14 +47,10 @@ lib2to3/
 *.key
 
 # ----- Project-specific large model artifacts (NOT committed) -----
-# Hugging Face model snapshots (multi-GB each)
-basenlimean/
-dbmbz/
-lighteternal/
-
-# Custom-trained pickled models / vectorizers (regenerable from training/)
-mlmodels/
-vectorizers/
+# Everything under artifacts/ is downloaded HF model snapshots or
+# trained .pkl files. Multi-GB total. Re-create via download / training
+# (see README).
+artifacts/
 
 # OCR / scratch images
 images/

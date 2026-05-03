@@ -52,15 +52,17 @@ multiple GB total). You need them on disk before the validator can
 run. The expected layout is:
 
 ```text
-basenlimean/         # sentence-transformers model snapshot (~440 MB)
-dbmbz/               # NER model snapshot (~1.3 GB)
-lighteternal/        # subjectivity model snapshot (~1.1 GB)
-mlmodels/
-    impclickbait.pkl
-    wewill.pkl
-vectorizers/
-    vectorizer.pkl
-    wevec.pkl
+artifacts/
+    hf_models/
+        basenlimean/     # sentence-transformers snapshot (~440 MB)
+        dbmbz/           # NER model snapshot (~1.3 GB)
+        lighteternal/    # subjectivity model snapshot (~1.1 GB)
+    classifiers/
+        impclickbait.pkl
+        wewill.pkl
+    vectorizers/
+        vectorizer.pkl
+        wevec.pkl
 ```
 
 You can either:
@@ -72,6 +74,8 @@ You can either:
   ```powershell
   python -m training.train_clickbait
   ```
+
+  This writes to `artifacts/classifiers/clickbaitmodel.pkl`.
 
   (Only the clickbait model has a training script in this repo. The
   other `.pkl` files were trained against datasets and scripts that
@@ -136,12 +140,14 @@ fakenews_detector/
         loaders.py         # cached singleton model loaders
 
 training/
-    train_clickbait.py     # rebuild mlmodels/clickbaitmodel.pkl
+    train_clickbait.py     # rebuild artifacts/classifiers/clickbaitmodel.pkl
 
 datasets/                  # CSVs used by the training scripts
-mlmodels/                  # trained .pkl artifacts (gitignored)
-vectorizers/               # fitted vectorizers (gitignored)
-basenlimean/, dbmbz/, lighteternal/   # HF model snapshots (gitignored)
+
+artifacts/                 # all runtime model artifacts (gitignored)
+    hf_models/             #   downloaded HuggingFace snapshots
+    classifiers/           #   trained .pkl classifiers
+    vectorizers/           #   fitted TF-IDF vectorizers
 
 .env.example, .gitignore, requirements.txt, pyproject.toml
 ```

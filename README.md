@@ -118,6 +118,35 @@ FakeNewsValidator(headline, checks=[
 ]).validate()
 ```
 
+## Web UI
+
+A small Flask app sits on top of the validator. It runs each
+validation as a background job and the browser polls for real-time
+per-check progress (no fake CSS animations, no Flask globals).
+
+```powershell
+.\venv\Scripts\activate
+pip install flask waitress     # or: pip install -e ".[webapp]"
+python run_webapp.py
+```
+
+Then open http://127.0.0.1:5000.
+
+Pages:
+
+- `/`           &mdash; landing page
+- `/detect`     &mdash; submit a headline
+- `/progress/<job_id>`  &mdash; live progress (auto-redirects to results)
+- `/results/<job_id>`   &mdash; per-check breakdown
+- `/about`      &mdash; how the system works
+- `/api/jobs/<job_id>`  &mdash; JSON status endpoint (used by the progress page)
+
+For something more production-y, run it via waitress:
+
+```powershell
+waitress-serve --listen=127.0.0.1:5000 --call webapp:create_app
+```
+
 ## Project layout
 
 ```text
@@ -144,11 +173,19 @@ training/
 
 datasets/                  # CSVs used by the training scripts
 
+webapp/                    # optional Flask UI (separate from the core lib)
+    app.py                 # Flask app factory
+    routes.py
+    jobs.py                # in-memory job registry + background runner
+    templates/             # Jinja templates (proper inheritance)
+    static/                # styles.css, app.js, progress.js
+
 artifacts/                 # all runtime model artifacts (gitignored)
     hf_models/             #   downloaded HuggingFace snapshots
     classifiers/           #   trained .pkl classifiers
     vectorizers/           #   fitted TF-IDF vectorizers
 
+run_webapp.py              # entry point: python run_webapp.py
 .env.example, .gitignore, requirements.txt, pyproject.toml
 ```
 

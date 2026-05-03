@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}About &middot; {{ brand }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-9">
+        <h1>About {{ brand }}</h1>
+        <p class="lead text-muted">
+            A 5-step rule-based fake news detector. Originally a 2023 college
+            project; rebuilt from scratch as a small modular Python package.
+        </p>
+
+        <h3 class="mt-5">How it works</h3>
+        <p>
+            Most fake-news projects throw a single ML model at the headline
+            and call it a day. {{ brand }} takes the opposite approach: a
+            real news headline should pass <em>five independent sanity
+            checks</em>, each of which catches a different failure mode.
+        </p>
+
+        <ol>
+            <li><strong>Spelling.</strong> Real journalism is edited; fake
+                stories often contain obvious typos.</li>
+            <li><strong>Clickbait.</strong> A trained classifier rejects
+                attention-bait phrasing.</li>
+            <li><strong>Subjectivity.</strong> A transformer rejects
+                opinion-style writing that's not actually reporting.</li>
+            <li><strong>News-title shape.</strong> Another classifier rejects
+                full sentences that don't look like a headline.</li>
+            <li><strong>Web presence.</strong> Searches Google, finds
+                semantically similar headlines from real news domains, and
+                asks an LLM whether they're saying the same thing.</li>
+        </ol>
+
+        <p>
+            If <em>any</em> check fails, the headline is flagged. The result
+            page shows you exactly which gate it tripped on.
+        </p>
+
+        <h3 class="mt-5">Limitations</h3>
+        <ul>
+            <li>The web-presence check scrapes Google with selectors that
+                are fragile and may break when Google updates its HTML.</li>
+            <li>The Anthropic API is required for the final gate.</li>
+            <li>Don't act on the verdict alone &mdash; always cross-check
+                with reputable sources before sharing or publishing.</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

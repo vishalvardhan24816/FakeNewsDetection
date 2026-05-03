@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Validating&hellip; &middot; {{ brand }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-9"
+         data-job-id="{{ job.id }}"
+         data-results-url="{{ url_for('ui.results', job_id=job.id) }}"
+         data-status-url="{{ url_for('ui.api_job_status', job_id=job.id) }}"
+         id="progress-root">
+
+        <h1 class="mb-3">Running checks</h1>
+        <p class="text-muted mb-4">
+            Headline: <em id="headline">&ldquo;{{ job.headline }}&rdquo;</em>
+        </p>
+
+        <div class="progress mb-4" style="height: 1.5rem;">
+            <div id="progress-bar"
+                 class="progress-bar progress-bar-striped progress-bar-animated"
+                 role="progressbar"
+                 aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"
+                 style="width: 0%;">0%</div>
+        </div>
+
+        <ul class="list-group" id="check-list">
+            {% for name in ["spelling", "clickbait", "subjectivity", "news_title", "web_presence"] %}
+            <li class="list-group-item d-flex justify-content-between align-items-center"
+                data-check="{{ name }}">
+                <span>
+                    <i class="fas fa-circle-notch fa-spin text-muted me-2 status-icon"></i>
+                    <span class="check-name">{{ name.replace('_', ' ').title() }}</span>
+                </span>
+                <span class="badge bg-secondary status-badge">pending</span>
+            </li>
+            {% endfor %}
+        </ul>
+
+        <p class="text-muted mt-4 small">
+            The first check on each fresh server start can take a moment
+            because the ML models load lazily into memory.
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% block body_extra %}
+<script src="{{ url_for('static', filename='progress.js') }}"></script>
+{% endblock %}

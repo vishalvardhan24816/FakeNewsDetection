@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}{{ brand }} &middot; Spot fake news in 5 checks{% endblock %}
+
+{% block content %}
+<div class="hero text-center py-5">
+    <h1 class="display-4 fw-bold">Don't share it before you check it.</h1>
+    <p class="lead text-muted mt-3">
+        {{ brand }} runs <strong>five independent gates</strong> on a news headline
+        and only marks it as <em>real</em> if every single one passes.
+    </p>
+    <a href="{{ url_for('ui.detect') }}" class="btn btn-primary btn-lg mt-4">
+        <i class="fas fa-search me-2"></i>Check a headline
+    </a>
+</div>
+
+<section class="row g-4 mt-2">
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">1. Spelling</h5>
+                <p class="card-text text-muted">
+                    NER-aware spell check. Skips named entities, fails the
+                    headline if the typo ratio is too high.
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">2. Clickbait</h5>
+                <p class="card-text text-muted">
+                    A custom-trained classifier flags sensationalised, vague
+                    or attention-bait headlines.
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">3. Subjectivity</h5>
+                <p class="card-text text-muted">
+                    A transformer model rejects opinion-style headlines that
+                    don't read like real reporting.
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">4. News-title shape</h5>
+                <p class="card-text text-muted">
+                    A second classifier rejects normal sentences that don't
+                    match the structure of a real news title.
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">5. Web presence</h5>
+                <p class="card-text text-muted">
+                    Searches Google, computes sentence similarity against
+                    real news results, and asks an LLM to confirm the match.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

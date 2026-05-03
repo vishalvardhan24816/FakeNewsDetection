@@ -26,6 +26,12 @@ dependencies = [
     "anthropic>=0.25.0",
 ]
 
+[project.optional-dependencies]
+webapp = [
+    "flask>=3.0.0",
+    "waitress>=3.0.0",
+]
+
 [tool.setuptools.packages.find]
-include = ["fakenews_detector*", "training*"]
+include = ["fakenews_detector*", "training*", "webapp*"]
 exclude = ["tests*"]

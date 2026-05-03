@@ -26,3 +26,7 @@ sentence-transformers>=2.7.0
 
 # LLM client for the final web-presence gate
 anthropic>=0.25.0
+
+# Web UI (optional - only needed if you run the webapp/ Flask app)
+flask>=3.0.0
+waitress>=3.0.0

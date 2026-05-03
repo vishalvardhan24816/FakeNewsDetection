@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Detect &middot; {{ brand }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <h1 class="mb-4">Check a headline</h1>
+
+        {% if error %}
+        <div class="alert alert-warning" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>{{ error }}
+        </div>
+        {% endif %}
+
+        <form method="post" action="{{ url_for('ui.detect') }}" class="card shadow-sm">
+            <div class="card-body">
+                <label for="headline" class="form-label">News headline</label>
+                <textarea
+                        id="headline"
+                        name="headline"
+                        rows="3"
+                        maxlength="500"
+                        class="form-control form-control-lg"
+                        placeholder="Paste or type the headline you want to verify&hellip;"
+                        required autofocus></textarea>
+                <div class="form-text">
+                    Best results with a single, complete headline. Avoid
+                    pasting full articles.
+                </div>
+            </div>
+            <div class="card-footer text-end">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="fas fa-shield-alt me-2"></i>Run all 5 checks
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

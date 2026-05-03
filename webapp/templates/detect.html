@@ -13,7 +13,13 @@
         </div>
         {% endif %}
 
+        {# `selected_checks` is only set by the route on a re-render
+           after a validation error; default to all checks ticked. #}
+        {% set ticked = selected_checks if selected_checks is defined else all_check_names %}
+
         <form method="post" action="{{ url_for('ui.detect') }}" class="card shadow-sm">
+            {# Marker field so the route can tell empty-checks from no-checkbox-form. #}
+            <input type="hidden" name="checks_submitted" value="1">
             <div class="card-body">
                 <label for="headline" class="form-label">News headline</label>
                 <textarea
@@ -23,15 +29,40 @@
                         maxlength="500"
                         class="form-control form-control-lg"
                         placeholder="Paste or type the headline you want to verify&hellip;"
-                        required autofocus></textarea>
+                        required autofocus>{{ headline or "" }}</textarea>
                 <div class="form-text">
                     Best results with a single, complete headline. Avoid
                     pasting full articles.
                 </div>
+
+                <details class="mt-4" {% if selected_checks is defined and selected_checks|length != all_check_names|length %}open{% endif %}>
+                    <summary class="text-muted">
+                        <i class="fas fa-sliders-h me-1"></i>
+                        Advanced &middot; choose which checks to run
+                    </summary>
+                    <div class="row g-2 mt-2">
+                        {% for name in all_check_names %}
+                        {% set label, hint = check_labels[name] %}
+                        <div class="col-md-6 col-lg-4">
+                            <div class="form-check">
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       id="check_{{ name }}"
+                                       name="check_{{ name }}"
+                                       {% if name in ticked %}checked{% endif %}>
+                                <label class="form-check-label" for="check_{{ name }}">
+                                    <strong>{{ label }}</strong>
+                                    <small class="d-block text-muted">{{ hint }}</small>
+                                </label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </details>
             </div>
             <div class="card-footer text-end">
                 <button type="submit" class="btn btn-primary btn-lg">
-                    <i class="fas fa-shield-alt me-2"></i>Run all 5 checks
+                    <i class="fas fa-shield-alt me-2"></i>Run selected checks
                 </button>
             </div>
         </form>

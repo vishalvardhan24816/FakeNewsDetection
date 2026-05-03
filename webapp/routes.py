@@ -15,11 +15,24 @@ from flask import (
     url_for,
 )
 
-from webapp.jobs import JOB_DONE, JOB_ERROR
+from webapp.jobs import ALL_CHECKS, JOB_DONE, JOB_ERROR
 
 log = logging.getLogger(__name__)
 
 bp = Blueprint("ui", __name__)
+
+
+def _selected_checks_from_form(form) -> list[str]:
+    """Read which check checkboxes are ticked in the submitted form.
+
+    Detect uses a hidden ``checks_submitted=1`` marker so we can
+    distinguish "the form didn't include the checkboxes at all"
+    (default to all) from "the user unticked every checkbox"
+    (return empty -> caller will show an error).
+    """
+    if not form.get("checks_submitted"):
+        return list(ALL_CHECKS)
+    return [name for name in ALL_CHECKS if form.get(f"check_{name}")]
 
 
 # ----- pages -------------------------------------------------------------
@@ -45,10 +58,30 @@ def detect():
         return render_template(
             "detect.html",
             error="Please enter a headline before submitting.",
+            selected_checks=_selected_checks_from_form(request.form),
         )
 
-    job = current_app.config["JOB_REGISTRY"].submit(headline)
-    log.info("Submitted job %s", job.id)
+    selected = _selected_checks_from_form(request.form)
+    if not selected:
+        return render_template(
+            "detect.html",
+            error="Please select at least one check to run.",
+            headline=headline,
+            selected_checks=[],
+        )
+
+    try:
+        job = current_app.config["JOB_REGISTRY"].submit(
+            headline, check_names=selected
+        )
+    except ValueError as exc:
+        return render_template(
+            "detect.html",
+            error=str(exc),
+            headline=headline,
+            selected_checks=selected,
+        )
+    log.info("Submitted job %s with checks=%s", job.id, selected)
     return redirect(url_for("ui.progress", job_id=job.id))
 
 

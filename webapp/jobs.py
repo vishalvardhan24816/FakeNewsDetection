@@ -18,9 +18,16 @@ import threading
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Sequence
 
 from fakenews_detector import CheckResult, FakeNewsValidator
+from fakenews_detector.checks import (
+    ClickbaitCheck,
+    NewsTitleCheck,
+    SpellingCheck,
+    SubjectivityCheck,
+    WebPresenceCheck,
+)
 
 log = logging.getLogger(__name__)
 
@@ -29,6 +36,17 @@ JOB_RUNNING = "running"
 JOB_DONE = "done"
 JOB_ERROR = "error"
 
+# Mapping of form-friendly check name -> Check class. The order here is
+# the canonical pipeline order; routes.py iterates this to read form
+# checkboxes in a deterministic sequence.
+ALL_CHECKS: Dict[str, type] = {
+    "spelling": SpellingCheck,
+    "clickbait": ClickbaitCheck,
+    "subjectivity": SubjectivityCheck,
+    "news_title": NewsTitleCheck,
+    "web_presence": WebPresenceCheck,
+}
+
 
 @dataclass
 class Job:
@@ -36,6 +54,7 @@ class Job:
 
     id: str
     headline: str
+    check_names: List[str] = field(default_factory=list)
     status: str = JOB_PENDING
     current_check: Optional[str] = None
     results: List[CheckResult] = field(default_factory=list)
@@ -88,9 +107,40 @@ class JobRegistry:
         with self._lock:
             return self._jobs.get(job_id)
 
-    def submit(self, headline: str) -> Job:
-        """Create a new job and start it on a background thread."""
-        job = Job(id=uuid.uuid4().hex, headline=headline)
+    def submit(
+        self, headline: str, *, check_names: Optional[Sequence[str]] = None
+    ) -> Job:
+        """Create a new job and start it on a background thread.
+
+        Parameters
+        ----------
+        headline:
+            The text to validate.
+        check_names:
+            Subset of :data:`ALL_CHECKS` keys to run, in pipeline order.
+            ``None`` (the default) runs all five checks.
+
+        Raises
+        ------
+        ValueError
+            If ``check_names`` is empty or contains an unknown check.
+        """
+        selected = list(check_names) if check_names is not None else list(ALL_CHECKS)
+        if not selected:
+            raise ValueError("At least one check must be selected.")
+        unknown = [n for n in selected if n not in ALL_CHECKS]
+        if unknown:
+            raise ValueError(f"Unknown check(s): {unknown}")
+
+        # Always emit checks in the canonical pipeline order, regardless
+        # of the order the caller listed them in.
+        ordered = [n for n in ALL_CHECKS if n in selected]
+
+        job = Job(
+            id=uuid.uuid4().hex,
+            headline=headline,
+            check_names=ordered,
+        )
         with self._lock:
             self._jobs[job.id] = job
             self._order.append(job.id)
@@ -116,11 +166,15 @@ class JobRegistry:
             job.started_at = _utcnow()
 
         try:
-            # We construct a validator with the standard 5-check pipeline,
-            # then run each check manually so we can publish per-check
-            # progress (which the wrapper validate() doesn't expose).
+            # We construct a validator restricted to the requested
+            # checks and run each one manually so we can publish
+            # per-check progress (which the wrapper validate() doesn't
+            # expose).
+            check_instances = [ALL_CHECKS[name]() for name in job.check_names]
             validator = FakeNewsValidator(
-                job.headline, stop_on_first_failure=True
+                job.headline,
+                checks=check_instances,
+                stop_on_first_failure=True,
             )
             for check in validator._checks:
                 with self._lock:

@@ -6,6 +6,7 @@
 <div class="row justify-content-center">
     <div class="col-md-9"
          data-job-id="{{ job.id }}"
+         data-total-checks="{{ job.check_names|length }}"
          data-results-url="{{ url_for('ui.results', job_id=job.id) }}"
          data-status-url="{{ url_for('ui.api_job_status', job_id=job.id) }}"
          id="progress-root">
@@ -24,12 +25,13 @@
         </div>
 
         <ul class="list-group" id="check-list">
-            {% for name in ["spelling", "clickbait", "subjectivity", "news_title", "web_presence"] %}
+            {% for name in job.check_names %}
+            {% set label, _hint = check_labels[name] %}
             <li class="list-group-item d-flex justify-content-between align-items-center"
                 data-check="{{ name }}">
                 <span>
                     <i class="fas fa-circle-notch fa-spin text-muted me-2 status-icon"></i>
-                    <span class="check-name">{{ name.replace('_', ' ').title() }}</span>
+                    <span class="check-name">{{ label }}</span>
                 </span>
                 <span class="badge bg-secondary status-badge">pending</span>
             </li>

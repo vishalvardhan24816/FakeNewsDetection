@@ -9,7 +9,7 @@
         return;
     }
 
-    const TOTAL_CHECKS = 5;
+    const TOTAL_CHECKS = parseInt(root.dataset.totalChecks, 10) || 5;
     const POLL_INTERVAL_MS = 750;
 
     const statusUrl = root.dataset.statusUrl;

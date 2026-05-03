@@ -7,7 +7,7 @@ name = "fakenews_detector"
 version = "1.0.0"
 description = "5-step rule-based fake news headline validator (refactor of a 2023 college project)."
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "vixha" }]
 dependencies = [

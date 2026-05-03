@@ -34,27 +34,69 @@
             </div>
         </div>
 
+        {# ---- Web verification summary (only when web_presence ran AND we have a best match) ---- #}
+        {% set wp = job.results | selectattr('name', 'equalto', 'web_presence') | first %}
+        {% if wp and wp.metadata.get('best_match_url') %}
+        {% set sim_pct = ((wp.metadata.get('aggregate_similarity') or 0) * 100) | round(1) %}
+        <div class="card shadow-sm mb-4 web-match-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="text-muted text-uppercase small mb-0">
+                        <i class="fas fa-link me-1"></i>Closest match on the web
+                    </h6>
+                    {% if sim_pct > 0 %}
+                    <span class="badge {% if wp.passed %}bg-success{% else %}bg-warning text-dark{% endif %} fs-6">
+                        {{ sim_pct }}% similar
+                    </span>
+                    {% endif %}
+                </div>
+                <p class="mb-2 fw-semibold">{{ wp.metadata.get('best_match_title') or 'Untitled' }}</p>
+                <a href="{{ wp.metadata.get('best_match_url') }}"
+                   target="_blank" rel="noopener noreferrer"
+                   class="text-truncate d-block small">
+                    <i class="fas fa-external-link-alt me-1"></i>{{ wp.metadata.get('best_match_url') }}
+                </a>
+                {% if sim_pct > 0 %}
+                <div class="progress mt-3" style="height: 0.5rem;" aria-label="Similarity score">
+                    <div class="progress-bar {% if wp.passed %}bg-success{% else %}bg-warning{% endif %}"
+                         role="progressbar"
+                         style="width: {{ sim_pct }}%;"
+                         aria-valuenow="{{ sim_pct }}" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
         <h3 class="mb-3">Per-check breakdown</h3>
         <div class="list-group mb-4">
             {% for r in job.results %}
             <div class="list-group-item">
-                <div class="d-flex w-100 justify-content-between">
+                <div class="d-flex w-100 justify-content-between align-items-center">
                     <h5 class="mb-1">
                         {% if r.passed %}
                             <i class="fas fa-check-circle text-success me-2"></i>
                         {% else %}
                             <i class="fas fa-times-circle text-danger me-2"></i>
                         {% endif %}
-                        {{ r.name.replace('_', ' ').title() }}
+                        {{ check_labels[r.name][0] if r.name in check_labels else r.name.replace('_', ' ').title() }}
                     </h5>
-                    <span class="badge {% if r.passed %}bg-success{% else %}bg-danger{% endif %}">
-                        {{ 'PASS' if r.passed else 'FAIL' }}
-                    </span>
+                    <div>
+                        {% if r.name == 'web_presence' and r.metadata.get('aggregate_similarity') %}
+                        {% set s = (r.metadata.get('aggregate_similarity') * 100) | round(1) %}
+                        <span class="badge bg-light text-dark border me-1" title="Aggregate similarity">
+                            {{ s }}%
+                        </span>
+                        {% endif %}
+                        <span class="badge {% if r.passed %}bg-success{% else %}bg-danger{% endif %}">
+                            {{ 'PASS' if r.passed else 'FAIL' }}
+                        </span>
+                    </div>
                 </div>
                 <p class="mb-1 text-muted">{{ r.detail }}</p>
                 {% if r.metadata %}
                 <details class="mt-2">
-                    <summary class="small text-muted">Show details</summary>
+                    <summary class="small text-muted">Show raw metadata</summary>
                     <pre class="small mt-2 mb-0">{{ r.metadata | tojson(indent=2) }}</pre>
                 </details>
                 {% endif %}

@@ -81,3 +81,16 @@ pre {
     border-radius: 0.5rem;
     overflow-x: auto;
 }
+
+.web-match-card {
+    border-left: 4px solid #4f46e5;
+}
+
+.web-match-card a {
+    color: #4f46e5;
+    text-decoration: none;
+}
+
+.web-match-card a:hover {
+    text-decoration: underline;
+}

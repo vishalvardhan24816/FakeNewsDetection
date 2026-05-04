@@ -120,9 +120,9 @@ FakeNewsValidator(headline, checks=[
 
 ## Web UI
 
-A small Flask app sits on top of the validator. It runs each
-validation as a background job and the browser polls for real-time
-per-check progress (no fake CSS animations, no Flask globals).
+A small Flask app sits on top of the validator. POST /detect runs
+the validator synchronously inside the request handler (same as the
+original 3-year-old design), then renders the result page.
 
 ```powershell
 .\venv\Scripts\activate
@@ -135,11 +135,9 @@ Then open http://127.0.0.1:5000.
 Pages:
 
 - `/`           &mdash; landing page
-- `/detect`     &mdash; submit a headline
-- `/progress/<job_id>`  &mdash; live progress (auto-redirects to results)
-- `/results/<job_id>`   &mdash; per-check breakdown
+- `/detect`     &mdash; submit a headline (synchronous; the request blocks
+  while the validator runs, then renders the result page)
 - `/about`      &mdash; how the system works
-- `/api/jobs/<job_id>`  &mdash; JSON status endpoint (used by the progress page)
 
 For something more production-y, run it via waitress:
 
@@ -175,10 +173,9 @@ datasets/                  # CSVs used by the training scripts
 
 webapp/                    # optional Flask UI (separate from the core lib)
     app.py                 # Flask app factory
-    routes.py
-    jobs.py                # in-memory job registry + background runner
+    routes.py              # synchronous request handlers
     templates/             # Jinja templates (proper inheritance)
-    static/                # styles.css, app.js, progress.js
+    static/                # styles.css, app.js
 
 artifacts/                 # all runtime model artifacts (gitignored)
     hf_models/             #   downloaded HuggingFace snapshots
@@ -191,17 +188,20 @@ run_webapp.py              # entry point: python run_webapp.py
 
 ## Known limitations
 
-- **Google scrape selectors are stale.** The web-presence check uses
-  CSS class names (`yuRUbf`, `VwiC3b`, ...) that were valid in 2023.
-  Google rotates these often, so this check may need its selectors
-  re-identified to actually return matches today. The fallback path
-  reports "no corroborating results" rather than crashing.
+- **Search backend is pluggable.** The web-presence check defaults
+  to DuckDuckGo (`SEARCH_PROVIDER=ddg`); set `SEARCH_PROVIDER=google`
+  to use Google with the original dynamic per-domain `tbm=nws`
+  trust check. Google may intermittently serve a JavaScript-shell
+  page; in that case the check falls back to DuckDuckGo automatically.
 - **Heavyweight first call.** First call to each check loads its
-  model into memory; subsequent calls reuse it (this is a big
-  improvement over the original, which reloaded models on every
-  request).
-- **Anthropic API required for check #5.** No local-only fallback by
-  design.
+  model into memory; subsequent calls reuse it (a big improvement
+  over the original, which reloaded models on every request).
+- **LLM API required for check #5.** Either `GOOGLE_GEMINI_API_KEY`
+  (recommended, free tier) or `ANTHROPIC_API_KEY`. No local-only
+  fallback by design.
+- **Synchronous request handler.** /detect blocks for ~10-30s while
+  the validator runs. Fine for a single-user demo; production would
+  put this behind a queue.
 
 ## What changed in the refactor
 

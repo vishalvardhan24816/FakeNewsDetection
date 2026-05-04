@@ -3,39 +3,59 @@
 from __future__ import annotations
 
 import logging
+import os
+import time
 
-from flask import (
-    Blueprint,
-    abort,
-    current_app,
-    jsonify,
-    redirect,
-    render_template,
-    request,
-    url_for,
+from flask import Blueprint, render_template, request
+
+from fakenews_detector.checks import (
+    ClickbaitCheck,
+    NewsTitleCheck,
+    SpellingCheck,
+    SubjectivityCheck,
+    WebPresenceCheck,
 )
-
-from webapp.jobs import ALL_CHECKS, JOB_DONE, JOB_ERROR
+from fakenews_detector.validator import FakeNewsValidator
 
 log = logging.getLogger(__name__)
 
 bp = Blueprint("ui", __name__)
 
+# Minimum wall-clock time (seconds) the /detect POST takes before it
+# returns a result page. Real validation can finish in <500ms when a
+# cheap check fails fast (typo headline -> spelling check rejects in
+# one tokenizer pass). That's *too* fast - the in-flight pipeline
+# animation barely flashes and the user wonders if anything actually
+# ran. Padding to ~5s lets the animation play through the first few
+# steps before the page navigates. Override with DETECT_MIN_RESPONSE_S.
+_MIN_RESPONSE_S = float(os.environ.get("DETECT_MIN_RESPONSE_S", "5.0"))
+
+# Lookup table: form field name -> Check class. Order is the canonical
+# pipeline order (cheapest first, expensive last) so the validator
+# short-circuits early on form-level failures and only spends real
+# time on web_presence when needed.
+ALL_CHECKS: dict[str, type] = {
+    "spelling": SpellingCheck,
+    "clickbait": ClickbaitCheck,
+    "subjectivity": SubjectivityCheck,
+    "news_title": NewsTitleCheck,
+    "web_presence": WebPresenceCheck,
+}
+
 
 def _selected_checks_from_form(form) -> list[str]:
-    """Read which check checkboxes are ticked in the submitted form.
+    """Read which check checkboxes the user enabled.
 
-    Detect uses a hidden ``checks_submitted=1`` marker so we can
-    distinguish "the form didn't include the checkboxes at all"
-    (default to all) from "the user unticked every checkbox"
-    (return empty -> caller will show an error).
+    The form always submits a ``checks_submitted=1`` marker so we can
+    distinguish "form had no checkbox fields at all" (default to all)
+    from "user unticked everything" (return empty -> show error).
     """
     if not form.get("checks_submitted"):
         return list(ALL_CHECKS)
     return [name for name in ALL_CHECKS if form.get(f"check_{name}")]
 
 
-# ----- pages -------------------------------------------------------------
+# ----- pages ------------------------------------------------------------
 
 
 @bp.get("/")
@@ -65,57 +85,42 @@ def detect():
     if not selected:
         return render_template(
             "detect.html",
-            error="Please select at least one check to run.",
+            error="Please enable at least one check.",
             headline=headline,
             selected_checks=[],
         )
 
+    log.info("Running validator on headline=%r checks=%s", headline, selected)
+    check_instances = [ALL_CHECKS[name]() for name in selected]
+    validator = FakeNewsValidator(
+        headline, checks=check_instances, stop_on_first_failure=True
+    )
+    started = time.monotonic()
     try:
-        job = current_app.config["JOB_REGISTRY"].submit(
-            headline, check_names=selected
-        )
-    except ValueError as exc:
+        report = validator.validate()
+    except FileNotFoundError as exc:
+        log.exception("Model artifact missing")
         return render_template(
             "detect.html",
-            error=str(exc),
+            error=f"Setup error: {exc}",
             headline=headline,
             selected_checks=selected,
         )
-    log.info("Submitted job %s with checks=%s", job.id, selected)
-    return redirect(url_for("ui.progress", job_id=job.id))
+
+    # Pad fast responses so the in-flight pipeline animation isn't
+    # cut off mid-flow on early failures.
+    elapsed = time.monotonic() - started
+    if elapsed < _MIN_RESPONSE_S:
+        pad = _MIN_RESPONSE_S - elapsed
+        log.debug("Padding response by %.2fs (real=%.2fs)", pad, elapsed)
+        time.sleep(pad)
+
+    return render_template(
+        "results.html", report=report, ran_check_names=selected
+    )
 
 
-@bp.get("/progress/<job_id>")
-def progress(job_id: str):
-    job = current_app.config["JOB_REGISTRY"].get(job_id)
-    if job is None:
-        abort(404)
-    return render_template("progress.html", job=job)
-
-
-@bp.get("/results/<job_id>")
-def results(job_id: str):
-    job = current_app.config["JOB_REGISTRY"].get(job_id)
-    if job is None:
-        abort(404)
-    if job.status not in (JOB_DONE, JOB_ERROR):
-        # Not finished yet - send them back to the progress page.
-        return redirect(url_for("ui.progress", job_id=job.id))
-    return render_template("results.html", job=job)
-
-
-# ----- JSON endpoints (used by the progress page) ------------------------
-
-
-@bp.get("/api/jobs/<job_id>")
-def api_job_status(job_id: str):
-    job = current_app.config["JOB_REGISTRY"].get(job_id)
-    if job is None:
-        return jsonify({"error": "not_found"}), 404
-    return jsonify(job.to_dict())
-
-
-# ----- error handlers ----------------------------------------------------
+# ----- error handlers ---------------------------------------------------
 
 
 @bp.app_errorhandler(404)

@@ -24,7 +24,10 @@ torch>=2.2.0
 transformers>=4.40.0
 sentence-transformers>=2.7.0
 
-# LLM client for the final web-presence gate
+# LLM clients for the final web-presence gate. Either is sufficient -
+# the validator auto-picks based on which API key is set in .env.
+# Gemini is recommended (more generous free tier).
+google-genai>=0.3.0
 anthropic>=0.25.0
 
 # Web UI (optional - only needed if you run the webapp/ Flask app)

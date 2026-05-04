@@ -3,108 +3,89 @@
 {% block title %}Result &middot; {{ brand }}{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-9">
-        <div class="text-center mb-4">
-            {% if job.status == 'error' %}
-                <div class="display-1 text-warning"><i class="fas fa-exclamation-triangle"></i></div>
-                <h1 class="mt-3">Validation crashed</h1>
-                <p class="text-muted">{{ job.error }}</p>
-            {% elif job.passed_all %}
-                <div class="display-1 text-success"><i class="fas fa-check-circle"></i></div>
-                <h1 class="mt-3 text-success">Looks real</h1>
-                <p class="text-muted">All five checks passed.</p>
-            {% else %}
-                <div class="display-1 text-danger"><i class="fas fa-times-circle"></i></div>
-                <h1 class="mt-3 text-danger">Looks fake / unverified</h1>
-                {% set first_fail = job.results | selectattr('passed', 'equalto', false) | first %}
-                {% if first_fail %}
-                <p class="text-muted">
-                    Failed at the <strong>{{ first_fail.name.replace('_', ' ') }}</strong>
-                    check: {{ first_fail.detail }}
-                </p>
-                {% endif %}
+<div class="row justify-content-center fade-up">
+    <div class="col-lg-9">
+
+        {% if report.passed_all %}
+        <div class="verdict verdict-real">
+            <div class="verdict-icon"><i class="fas fa-check"></i></div>
+            <h1>Looks real</h1>
+            <p>All checks passed.</p>
+        </div>
+        {% else %}
+        <div class="verdict verdict-fake">
+            <div class="verdict-icon"><i class="fas fa-times"></i></div>
+            <h1>Looks fake / unverified</h1>
+            {% set first_fail = report.first_failure %}
+            {% if first_fail %}
+            <p>
+                Failed at the
+                <strong>{{ check_labels[first_fail.name][0] if first_fail.name in check_labels else first_fail.name.replace('_', ' ') }}</strong>
+                check &mdash; {{ first_fail.detail }}
+            </p>
             {% endif %}
-        </div>
-
-        <div class="card shadow-sm mb-4">
-            <div class="card-body">
-                <h6 class="text-muted text-uppercase small">Headline</h6>
-                <p class="mb-0">{{ job.headline }}</p>
-            </div>
-        </div>
-
-        {# ---- Web verification summary (only when web_presence ran AND we have a best match) ---- #}
-        {% set wp = job.results | selectattr('name', 'equalto', 'web_presence') | first %}
-        {% if wp and wp.metadata.get('best_match_url') %}
-        {% set sim_pct = ((wp.metadata.get('aggregate_similarity') or 0) * 100) | round(1) %}
-        <div class="card shadow-sm mb-4 web-match-card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h6 class="text-muted text-uppercase small mb-0">
-                        <i class="fas fa-link me-1"></i>Closest match on the web
-                    </h6>
-                    {% if sim_pct > 0 %}
-                    <span class="badge {% if wp.passed %}bg-success{% else %}bg-warning text-dark{% endif %} fs-6">
-                        {{ sim_pct }}% similar
-                    </span>
-                    {% endif %}
-                </div>
-                <p class="mb-2 fw-semibold">{{ wp.metadata.get('best_match_title') or 'Untitled' }}</p>
-                <a href="{{ wp.metadata.get('best_match_url') }}"
-                   target="_blank" rel="noopener noreferrer"
-                   class="text-truncate d-block small">
-                    <i class="fas fa-external-link-alt me-1"></i>{{ wp.metadata.get('best_match_url') }}
-                </a>
-                {% if sim_pct > 0 %}
-                <div class="progress mt-3" style="height: 0.5rem;" aria-label="Similarity score">
-                    <div class="progress-bar {% if wp.passed %}bg-success{% else %}bg-warning{% endif %}"
-                         role="progressbar"
-                         style="width: {{ sim_pct }}%;"
-                         aria-valuenow="{{ sim_pct }}" aria-valuemin="0" aria-valuemax="100"></div>
-                </div>
-                {% endif %}
-            </div>
         </div>
         {% endif %}
 
-        <h3 class="mb-3">Per-check breakdown</h3>
-        <div class="list-group mb-4">
-            {% for r in job.results %}
-            <div class="list-group-item">
-                <div class="d-flex w-100 justify-content-between align-items-center">
-                    <h5 class="mb-1">
-                        {% if r.passed %}
-                            <i class="fas fa-check-circle text-success me-2"></i>
-                        {% else %}
-                            <i class="fas fa-times-circle text-danger me-2"></i>
-                        {% endif %}
-                        {{ check_labels[r.name][0] if r.name in check_labels else r.name.replace('_', ' ').title() }}
-                    </h5>
-                    <div>
-                        {% if r.name == 'web_presence' and r.metadata.get('aggregate_similarity') %}
-                        {% set s = (r.metadata.get('aggregate_similarity') * 100) | round(1) %}
-                        <span class="badge bg-light text-dark border me-1" title="Aggregate similarity">
-                            {{ s }}%
-                        </span>
-                        {% endif %}
-                        <span class="badge {% if r.passed %}bg-success{% else %}bg-danger{% endif %}">
-                            {{ 'PASS' if r.passed else 'FAIL' }}
-                        </span>
-                    </div>
-                </div>
-                <p class="mb-1 text-muted">{{ r.detail }}</p>
-                {% if r.metadata %}
-                <details class="mt-2">
-                    <summary class="small text-muted">Show raw metadata</summary>
-                    <pre class="small mt-2 mb-0">{{ r.metadata | tojson(indent=2) }}</pre>
-                </details>
+        <div class="headline-card fade-up delay-1">
+            <div class="label">Headline</div>
+            <p class="text">{{ report.headline }}</p>
+        </div>
+
+        {% set wp = report.results | selectattr('name', 'equalto', 'web_presence') | first %}
+        {% if wp and wp.metadata.get('best_match_url') %}
+        {% set sim_pct = ((wp.metadata.get('aggregate_similarity') or 0) * 100) | round(1) %}
+        <div class="web-match-card fade-up delay-2">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0">
+                    <i class="fas fa-link me-1"></i>Closest match on the web
+                </h6>
+                {% if sim_pct > 0 %}
+                <span class="sim-badge {% if not wp.passed %}fail{% endif %}">
+                    {{ sim_pct }}% similar
+                </span>
                 {% endif %}
+            </div>
+            <div class="match-title">{{ wp.metadata.get('best_match_title') or 'Untitled' }}</div>
+            <a href="{{ wp.metadata.get('best_match_url') }}"
+               target="_blank" rel="noopener noreferrer"
+               class="text-truncate d-block mt-2">
+                <i class="fas fa-external-link-alt me-1"></i>{{ wp.metadata.get('best_match_url') }}
+            </a>
+            {% if sim_pct > 0 %}
+            <div class="progress mt-3" aria-label="Similarity score">
+                <div class="progress-bar {% if not wp.passed %}bg-warning{% endif %}"
+                     role="progressbar"
+                     style="width: {{ sim_pct }}%;"
+                     aria-valuenow="{{ sim_pct }}" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <h5 class="text-muted small text-uppercase mt-4 mb-3" style="letter-spacing: 0.06em;">
+            Per-check breakdown
+        </h5>
+        <div class="fade-up delay-3">
+            {% for r in report.results %}
+            <div class="check-row">
+                <div class="check-icon {% if r.passed %}pass{% else %}fail{% endif %}">
+                    <i class="fas fa-{% if r.passed %}check{% else %}times{% endif %}"></i>
+                </div>
+                <div class="check-body">
+                    <div class="check-name">
+                        {{ check_labels[r.name][0] if r.name in check_labels else r.name.replace('_', ' ').title() }}
+                    </div>
+                    <p class="check-detail">{{ r.detail }}</p>
+                </div>
+                <span class="check-status {% if r.passed %}pass{% else %}fail{% endif %}">
+                    {{ 'Pass' if r.passed else 'Fail' }}
+                </span>
             </div>
             {% endfor %}
         </div>
 
-        <div class="text-center">
+        <div class="text-center mt-4">
             <a href="{{ url_for('ui.detect') }}" class="btn btn-outline-primary">
                 <i class="fas fa-redo me-2"></i>Check another headline
             </a>

@@ -1,25 +1,37 @@
 {% extends "base.html" %}
 
-{% block title %}Detect &middot; {{ brand }}{% endblock %}
+{% block title %}Verify a headline &middot; {{ brand }}{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8">
-        <h1 class="mb-4">Check a headline</h1>
+<div class="row justify-content-center fade-up">
+    <div class="col-lg-8">
+        <div class="text-center mb-4">
+            <span class="eyebrow">Verify a headline</span>
+            <h1 class="mt-3">Is it real?</h1>
+            <p class="text-muted">
+                Paste a single news headline below. We'll run it through all
+                five gates and show you which ones it passes.
+            </p>
+        </div>
 
         {% if error %}
-        <div class="alert alert-warning" role="alert">
+        <div class="alert alert-warning fade-up" role="alert">
             <i class="fas fa-exclamation-triangle me-2"></i>{{ error }}
         </div>
         {% endif %}
 
-        {# `selected_checks` is only set by the route on a re-render
-           after a validation error; default to all checks ticked. #}
         {% set ticked = selected_checks if selected_checks is defined else all_check_names %}
 
-        <form method="post" action="{{ url_for('ui.detect') }}" class="card shadow-sm">
-            {# Marker field so the route can tell empty-checks from no-checkbox-form. #}
+        <form method="post" action="{{ url_for('ui.detect') }}" class="card shadow-sm fade-up delay-1" id="detectForm">
             <input type="hidden" name="checks_submitted" value="1">
+
+            {% for name in all_check_names %}
+            <input type="hidden"
+                   id="check_{{ name }}"
+                   name="check_{{ name }}"
+                   value="{% if name in ticked %}1{% endif %}">
+            {% endfor %}
+
             <div class="card-body">
                 <label for="headline" class="form-label">News headline</label>
                 <textarea
@@ -28,41 +40,96 @@
                         rows="3"
                         maxlength="500"
                         class="form-control form-control-lg"
-                        placeholder="Paste or type the headline you want to verify&hellip;"
+                        placeholder="e.g. ISRO successfully launches Chandrayaan-3 mission to the moon"
                         required autofocus>{{ headline or "" }}</textarea>
                 <div class="form-text">
-                    Best results with a single, complete headline. Avoid
-                    pasting full articles.
+                    <i class="fas fa-info-circle me-1"></i>
+                    Best results with a single, complete headline. Avoid pasting full articles.
                 </div>
 
-                <details class="mt-4" {% if selected_checks is defined and selected_checks|length != all_check_names|length %}open{% endif %}>
-                    <summary class="text-muted">
-                        <i class="fas fa-sliders-h me-1"></i>
-                        Advanced &middot; choose which checks to run
-                    </summary>
-                    <div class="row g-2 mt-2">
-                        {% for name in all_check_names %}
-                        {% set label, hint = check_labels[name] %}
-                        <div class="col-md-6 col-lg-4">
-                            <div class="form-check">
-                                <input class="form-check-input"
-                                       type="checkbox"
-                                       id="check_{{ name }}"
-                                       name="check_{{ name }}"
-                                       {% if name in ticked %}checked{% endif %}>
-                                <label class="form-check-label" for="check_{{ name }}">
-                                    <strong>{{ label }}</strong>
-                                    <small class="d-block text-muted">{{ hint }}</small>
-                                </label>
-                            </div>
-                        </div>
-                        {% endfor %}
+                <div class="hint-block mt-4">
+                    <div class="text-muted small mb-2 fw-semibold">
+                        <i class="fas fa-tag me-1"></i>About this headline (optional)
                     </div>
-                </details>
+                    <div class="form-check">
+                        <input class="form-check-input"
+                               type="checkbox"
+                               id="hint_named_entities"
+                               data-skips="spelling">
+                        <label class="form-check-label" for="hint_named_entities">
+                            Does it contain places or names?
+                            <small class="d-block text-muted">
+                                Tick if the headline mentions specific people, organisations or locations.
+                            </small>
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input"
+                               type="checkbox"
+                               id="hint_user_paraphrased"
+                               data-skips="spelling clickbait news_title">
+                        <label class="form-check-label" for="hint_user_paraphrased">
+                            Is it user-defined news?
+                            <small class="d-block text-muted">
+                                Tick if you've paraphrased the news in your own words instead of pasting a published headline.
+                            </small>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="check-progress" id="checkProgress" hidden>
+                    <div class="check-progress-header">
+                        <i class="fas fa-shield-alt me-2"></i>
+                        Running validation pipeline
+                    </div>
+                    <div class="progress-step" data-check="spelling">
+                        <div class="step-icon"><i class="fas fa-spell-check"></i></div>
+                        <div class="step-body">
+                            <div class="step-name">Spelling check</div>
+                            <div class="step-sub">NER-aware spell verification</div>
+                        </div>
+                        <div class="step-status"></div>
+                    </div>
+                    <div class="progress-step" data-check="clickbait">
+                        <div class="step-icon"><i class="fas fa-bullhorn"></i></div>
+                        <div class="step-body">
+                            <div class="step-name">Clickbait classifier</div>
+                            <div class="step-sub">Trained Naive Bayes model</div>
+                        </div>
+                        <div class="step-status"></div>
+                    </div>
+                    <div class="progress-step" data-check="subjectivity">
+                        <div class="step-icon"><i class="fas fa-comment-dots"></i></div>
+                        <div class="step-body">
+                            <div class="step-name">Subjectivity check</div>
+                            <div class="step-sub">Hugging Face transformer</div>
+                        </div>
+                        <div class="step-status"></div>
+                    </div>
+                    <div class="progress-step" data-check="news_title">
+                        <div class="step-icon"><i class="fas fa-newspaper"></i></div>
+                        <div class="step-body">
+                            <div class="step-name">News-title shape</div>
+                            <div class="step-sub">Trained classifier</div>
+                        </div>
+                        <div class="step-status"></div>
+                    </div>
+                    <div class="progress-step" data-check="web_presence">
+                        <div class="step-icon"><i class="fas fa-globe"></i></div>
+                        <div class="step-body">
+                            <div class="step-name">Web presence verification</div>
+                            <div class="step-sub" data-substep>Searching trusted news sources&hellip;</div>
+                        </div>
+                        <div class="step-status"></div>
+                    </div>
+                </div>
             </div>
-            <div class="card-footer text-end">
+            <div class="card-footer d-flex justify-content-between align-items-center">
+                <span class="text-muted small">
+                    <i class="fas fa-lock me-1"></i>Headlines aren't stored.
+                </span>
                 <button type="submit" class="btn btn-primary btn-lg">
-                    <i class="fas fa-shield-alt me-2"></i>Run selected checks
+                    <i class="fas fa-shield-alt me-2"></i>Verify headline
                 </button>
             </div>
         </form>

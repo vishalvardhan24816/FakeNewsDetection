@@ -183,9 +183,24 @@ artifacts/                 # all runtime model artifacts (gitignored)
     classifiers/           #   trained .pkl classifiers
     vectorizers/           #   fitted TF-IDF vectorizers
 
+tests/                     # pytest suite (86 tests, ~5s, fully mocked)
+    unit/                  #   per-module unit tests
+    webapp/                #   Flask test-client tests
+
 run_webapp.py              # entry point: python run_webapp.py
 .env.example, .gitignore, requirements.txt, pyproject.toml
 ```
+
+## Tests
+
+```bash
+pip install pytest
+pytest                     # 86 tests, ~5 seconds, no real models
+pytest -v                  # verbose
+pytest tests/unit/checks/  # only the per-check unit tests
+```
+
+See `tests/README.md` for the design rules and how to add new tests.
 
 ## Known limitations
 

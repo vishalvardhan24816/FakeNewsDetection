@@ -33,3 +33,7 @@ anthropic>=0.25.0
 # Web UI (optional - only needed if you run the webapp/ Flask app)
 flask>=3.0.0
 waitress>=3.0.0
+
+# Tests (optional - install with `pip install -r requirements.txt` to
+# also pull these in, or run `pip install pytest` separately).
+pytest>=8.0.0

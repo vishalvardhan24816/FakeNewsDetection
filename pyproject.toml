@@ -31,7 +31,27 @@ webapp = [
     "flask>=3.0.0",
     "waitress>=3.0.0",
 ]
+dev = [
+    "pytest>=8.0.0",
+]
 
 [tool.setuptools.packages.find]
 include = ["fakenews_detector*", "training*", "webapp*"]
 exclude = ["tests*"]
+
+[tool.pytest.ini_options]
+# Where pytest looks for tests + how it discovers them.
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+# Show slowest 5 tests at the end of every run -- helps catch any test
+# that accidentally starts loading a real model.
+addopts = "-ra --strict-markers --durations=5"
+# Filter the noisy deprecation warnings from transformers / torch /
+# pandas internals so the test output stays focused on real failures.
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning",
+    "ignore::FutureWarning",
+]

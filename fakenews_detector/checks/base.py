@@ -1,40 +1,45 @@
-"""Base abstractions for validation checks."""
+"""Shared types used by every check.
 
-from __future__ import annotations
+There are two things here:
 
-from abc import ABC, abstractmethod
+* `CheckResult` - a small "struct" describing the outcome of one check
+  (did it pass? what was the message? any extra info?).
+
+* `Check` - a tiny base class. Every check (Spelling, Clickbait, ...)
+  inherits from it and implements `run(headline)`. It's not an ABC
+  on purpose - just a plain class with one method to override.
+"""
+
 from dataclasses import dataclass, field
-from typing import Any, Dict
 
 
 @dataclass
 class CheckResult:
-    """Outcome of one validation check.
+    """One check's verdict.
 
-    Attributes
-    ----------
     name:
-        Human-readable check name (e.g. ``"clickbait"``).
+        Short label, e.g. "spelling".
     passed:
-        True if the headline passed this gate (i.e. is "real-news-like").
+        True if the headline cleared this check.
     detail:
-        Short message explaining the verdict, useful for UI / logs.
+        Human-readable message, shown on the results page.
     metadata:
-        Free-form extra info (similarity scores, misspelled words, ...).
+        Free-form extras (similarity scores, predicted labels, etc.).
     """
-
     name: str
     passed: bool
     detail: str = ""
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict = field(default_factory=dict) # empty object of dict class
 
 
-class Check(ABC):
-    """Interface every validation check must implement."""
+class Check:
+    """Base class for every validation check.
 
-    #: A short slug. Subclasses must set this.
-    name: str = ""
+    Subclasses set the `name` class attribute and implement `run()`.
+    """
 
-    @abstractmethod
-    def run(self, headline: str) -> CheckResult:
-        """Run the check against `headline` and return a :class:`CheckResult`."""
+    name = ""
+
+    def run(self, headline):
+        """Run this check on `headline` and return a CheckResult."""
+        raise NotImplementedError("Each Check subclass must implement run()")

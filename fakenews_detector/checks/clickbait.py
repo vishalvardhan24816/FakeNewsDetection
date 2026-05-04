@@ -1,11 +1,15 @@
-"""Step 2 - clickbait gate.
+"""Check 2 - Clickbait classifier.
 
-Vectorize the (preprocessed) headline with the trained TF-IDF and feed
-it into the trained classifier (`mlmodels/impclickbait.pkl`). A
-prediction of 0 means "not clickbait" -> the check passes.
+We trained a small classifier (Naive Bayes / Random Forest) on a
+labelled dataset of clickbait vs. real news headlines. At runtime:
+
+1. Run the headline through the same preprocessing the model saw at
+   training time (lowercase + strip punctuation + lemmatize).
+2. Turn it into a TF-IDF vector using the saved vectorizer.
+3. Ask the classifier to predict: 0 = real news, 1 = clickbait.
+
+We pass when the prediction is 0.
 """
-
-from __future__ import annotations
 
 import logging
 
@@ -24,8 +28,10 @@ log = logging.getLogger(__name__)
 class ClickbaitCheck(Check):
     name = "clickbait"
 
-    def run(self, headline: str) -> CheckResult:
+    def run(self, headline):
         normalized = normalize_for_classifier(headline)
+        # The vectorizer expects a pandas Series (that's how it was
+        # trained), so we wrap our single string in one.
         vector = get_clickbait_vectorizer().transform(pd.Series({1: normalized}))
         prediction = int(get_clickbait_classifier().predict(vector)[0])
 

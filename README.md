@@ -17,7 +17,7 @@ to look at the old implementations.
 | - | ------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | 1 | Spelling            | `fakenews_detector.checks.SpellingCheck`        | NER-aware spell-checker; fails if too many misspellings                                     |
 | 2 | Clickbait           | `fakenews_detector.checks.ClickbaitCheck`       | Custom-trained TF-IDF + classifier predicts clickbait vs. not                               |
-| 3 | Subjectivity        | `fakenews_detector.checks.SubjectivityCheck`    | Transformer (`lighteternal`) predicts subjective vs. objective                              |
+| 3 | Subjectivity        | `fakenews_detector.checks.SubjectivityCheck`    | Transformer predicts subjective vs. objective                                               |
 | 4 | Is news title       | `fakenews_detector.checks.NewsTitleCheck`       | Custom classifier predicts news-title vs. statement                                         |
 | 5 | Web presence        | `fakenews_detector.checks.WebPresenceCheck`     | Google search + sentence similarity + Anthropic Claude as the final contextual-match gate   |
 
@@ -54,31 +54,32 @@ run. The expected layout is:
 ```text
 artifacts/
     hf_models/
-        basenlimean/     # sentence-transformers snapshot (~440 MB)
-        dbmbz/           # NER model snapshot (~1.3 GB)
-        lighteternal/    # subjectivity model snapshot (~1.1 GB)
+        ner/                          # Hugging Face NER snapshot (~1.3 GB)
+        subjectivity/                 # subjectivity-classifier snapshot (~1.1 GB)
+        sentence_embedder/            # SentenceTransformer snapshot (~440 MB)
     classifiers/
-        impclickbait.pkl
-        wewill.pkl
+        clickbait_classifier.pkl
+        news_title_classifier.pkl
     vectorizers/
-        vectorizer.pkl
-        wevec.pkl
+        clickbait_vectorizer.pkl
+        news_title_vectorizer.pkl
 ```
 
 You can either:
 
 - **Restore them from your original local copy** (most common - they
   already exist alongside the project, just not in git), or
-- **Re-train the custom classifiers** by running the training script:
+- **Re-train the clickbait classifier** by running the training script:
 
   ```powershell
   python -m training.train_clickbait
   ```
 
-  This writes to `artifacts/classifiers/clickbaitmodel.pkl`.
+  This writes both `artifacts/classifiers/clickbait_classifier.pkl`
+  and `artifacts/vectorizers/clickbait_vectorizer.pkl`.
 
   (Only the clickbait model has a training script in this repo. The
-  other `.pkl` files were trained against datasets and scripts that
+  news-title classifier was trained against datasets and scripts that
   weren't migrated.)
 
 ### 4. Use it
@@ -167,7 +168,7 @@ fakenews_detector/
         loaders.py         # cached singleton model loaders
 
 training/
-    train_clickbait.py     # rebuild artifacts/classifiers/clickbaitmodel.pkl
+    train_clickbait.py     # rebuild artifacts/classifiers/clickbait_classifier.pkl
 
 datasets/                  # CSVs used by the training scripts
 

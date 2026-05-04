@@ -1,12 +1,23 @@
-"""HTTP routes for the DebunkHub web UI."""
+"""HTTP routes for the DebunkHub web UI.
 
-from __future__ import annotations
+Synchronous design (matches the original 3-year-old code):
+
+    GET  /detect    -> render the form
+    POST /detect    -> run the validator inline, render the results
+
+There's no background worker, no polling, no job IDs. The browser tab
+just blocks while Flask runs the checks. Simple, fewer moving parts,
+easier to explain.
+
+We attach all routes by calling ``register_routes(app)`` from
+``webapp/app.py``. One function, one place where URLs map to handlers.
+"""
 
 import logging
 import os
 import time
 
-from flask import Blueprint, render_template, request
+from flask import render_template, request
 
 from fakenews_detector.checks import (
     ClickbaitCheck,
@@ -19,22 +30,10 @@ from fakenews_detector.validator import FakeNewsValidator
 
 log = logging.getLogger(__name__)
 
-bp = Blueprint("ui", __name__)
 
-# Minimum wall-clock time (seconds) the /detect POST takes before it
-# returns a result page. Real validation can finish in <500ms when a
-# cheap check fails fast (typo headline -> spelling check rejects in
-# one tokenizer pass). That's *too* fast - the in-flight pipeline
-# animation barely flashes and the user wonders if anything actually
-# ran. Padding to ~5s lets the animation play through the first few
-# steps before the page navigates. Override with DETECT_MIN_RESPONSE_S.
-_MIN_RESPONSE_S = float(os.environ.get("DETECT_MIN_RESPONSE_S", "5.0"))
-
-# Lookup table: form field name -> Check class. Order is the canonical
-# pipeline order (cheapest first, expensive last) so the validator
-# short-circuits early on form-level failures and only spends real
-# time on web_presence when needed.
-ALL_CHECKS: dict[str, type] = {
+# Form field name -> Check class. Order matters: cheap checks first so
+# the validator can short-circuit before the expensive web search.
+ALL_CHECKS = {
     "spelling": SpellingCheck,
     "clickbait": ClickbaitCheck,
     "subjectivity": SubjectivityCheck,
@@ -43,96 +42,97 @@ ALL_CHECKS: dict[str, type] = {
 }
 
 
-def _selected_checks_from_form(form) -> list[str]:
-    """Read which check checkboxes the user enabled.
+# Minimum response time for /detect (seconds). Real validation can
+# finish in well under a second when an early check fails fast - that
+# would make the in-flight pipeline animation barely flash and confuse
+# the user. We pad fast responses so the animation always plays through
+# at least the first few steps. Set DETECT_MIN_RESPONSE_S=0 to disable.
+_MIN_RESPONSE_S = float(os.environ.get("DETECT_MIN_RESPONSE_S", "5.0"))
 
-    The form always submits a ``checks_submitted=1`` marker so we can
-    distinguish "form had no checkbox fields at all" (default to all)
-    from "user unticked everything" (return empty -> show error).
+
+def _selected_checks_from_form(form):
+    """Read which checks the user enabled.
+
+    The form always submits a hidden ``checks_submitted=1`` marker so we
+    can tell "form had no checkboxes at all" (default to all checks)
+    apart from "user unticked everything" (return empty -> error).
     """
     if not form.get("checks_submitted"):
         return list(ALL_CHECKS)
     return [name for name in ALL_CHECKS if form.get(f"check_{name}")]
 
 
-# ----- pages ------------------------------------------------------------
+def register_routes(app):
+    """Attach every URL route + error handler to the Flask app."""
+
+    # ----- pages -------------------------------------------------------
+
+    @app.get("/")
+    def index():
+        return render_template("index.html")
+
+    @app.get("/about")
+    def about():
+        return render_template("about.html")
+
+    @app.route("/detect", methods=["GET", "POST"])
+    def detect():
+        # GET = show the form.
+        if request.method == "GET":
+            return render_template("detect.html")
+
+        # POST = run validation.
+        headline = (request.form.get("headline") or "").strip()
+        if not headline:
+            return render_template(
+                "detect.html",
+                error="Please enter a headline before submitting.",
+                selected_checks=_selected_checks_from_form(request.form),
+            )
+
+        selected = _selected_checks_from_form(request.form)
 
 
-@bp.get("/")
-def index():
-    return render_template("index.html")
-
-
-@bp.get("/about")
-def about():
-    return render_template("about.html")
-
-
-@bp.route("/detect", methods=["GET", "POST"])
-def detect():
-    if request.method == "GET":
-        return render_template("detect.html")
-
-    headline = (request.form.get("headline") or "").strip()
-    if not headline:
-        return render_template(
-            "detect.html",
-            error="Please enter a headline before submitting.",
-            selected_checks=_selected_checks_from_form(request.form),
+        log.info("Running validator on headline=%r checks=%s", headline, selected)
+        check_classes = [ALL_CHECKS[name] for name in selected]
+        validator = FakeNewsValidator(
+            headline, checks=check_classes, stop_on_first_failure=True
         )
 
-    selected = _selected_checks_from_form(request.form)
-    if not selected:
+        started = time.monotonic()
+        try:
+            report = validator.validate()
+        except FileNotFoundError as exc:
+            # Missing model artifact -> tell the user, don't crash.
+            log.exception("Model artifact missing")
+            return render_template(
+                "detect.html",
+                error=f"Setup error: {exc}",
+                headline=headline,
+                selected_checks=selected,
+            )
+
+        # If validation finished too fast, sleep the difference so the
+        # in-flight progress animation has time to play through.
+        elapsed = time.monotonic() - started
+        if elapsed < _MIN_RESPONSE_S:
+            time.sleep(_MIN_RESPONSE_S - elapsed)
+
         return render_template(
-            "detect.html",
-            error="Please enable at least one check.",
-            headline=headline,
-            selected_checks=[],
+            "results.html", report=report, ran_check_names=selected
         )
 
-    log.info("Running validator on headline=%r checks=%s", headline, selected)
-    check_instances = [ALL_CHECKS[name]() for name in selected]
-    validator = FakeNewsValidator(
-        headline, checks=check_instances, stop_on_first_failure=True
-    )
-    started = time.monotonic()
-    try:
-        report = validator.validate()
-    except FileNotFoundError as exc:
-        log.exception("Model artifact missing")
-        return render_template(
-            "detect.html",
-            error=f"Setup error: {exc}",
-            headline=headline,
-            selected_checks=selected,
+    # ----- error handlers ---------------------------------------------
+
+    @app.errorhandler(404)
+    def not_found(_err):
+        return render_template("error.html", code=404, message="Page not found"), 404
+
+    @app.errorhandler(500)
+    def server_error(_err):
+        return (
+            render_template(
+                "error.html", code=500, message="Something went wrong on our end."
+            ),
+            500,
         )
-
-    # Pad fast responses so the in-flight pipeline animation isn't
-    # cut off mid-flow on early failures.
-    elapsed = time.monotonic() - started
-    if elapsed < _MIN_RESPONSE_S:
-        pad = _MIN_RESPONSE_S - elapsed
-        log.debug("Padding response by %.2fs (real=%.2fs)", pad, elapsed)
-        time.sleep(pad)
-
-    return render_template(
-        "results.html", report=report, ran_check_names=selected
-    )
-
-
-# ----- error handlers ---------------------------------------------------
-
-
-@bp.app_errorhandler(404)
-def not_found(_err):
-    return render_template("error.html", code=404, message="Page not found"), 404
-
-
-@bp.app_errorhandler(500)
-def server_error(_err):
-    return (
-        render_template(
-            "error.html", code=500, message="Something went wrong on our end."
-        ),
-        500,
-    )

@@ -22,7 +22,7 @@
 
         {% set ticked = selected_checks if selected_checks is defined else all_check_names %}
 
-        <form method="post" action="{{ url_for('ui.detect') }}" class="card shadow-sm fade-up delay-1" id="detectForm">
+        <form method="post" action="{{ url_for('detect') }}" class="card shadow-sm fade-up delay-1" id="detectForm">
             <input type="hidden" name="checks_submitted" value="1">
 
             {% for name in all_check_names %}

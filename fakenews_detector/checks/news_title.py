@@ -1,11 +1,15 @@
-"""Step 4 - is-news-title gate.
+"""Check 4 - Is-it-a-news-title-shape classifier.
 
-A custom-trained classifier decides whether the input looks like an
-actual news title vs. a normal sentence/paragraph. Prediction != 0
-means "yes, this is a news title", so the check passes.
+A short opinion sentence ("I think X is great") may already have passed
+the subjectivity check after preprocessing strips opinion words, but
+it still doesn't *look* like a real news title. We trained a separate
+classifier for this:
+
+* Label 1 -> looks like a news title  (PASS)
+* Label 0 -> looks like a normal sentence/paragraph (FAIL)
+
+Same shape as the clickbait check: preprocess -> vectorize -> predict.
 """
-
-from __future__ import annotations
 
 import logging
 
@@ -24,7 +28,7 @@ log = logging.getLogger(__name__)
 class NewsTitleCheck(Check):
     name = "news_title"
 
-    def run(self, headline: str) -> CheckResult:
+    def run(self, headline):
         normalized = normalize_for_classifier(headline)
         vector = get_news_title_vectorizer().transform(pd.Series({1: normalized}))
         prediction = int(get_news_title_classifier().predict(vector)[0])

@@ -1,18 +1,17 @@
-"""Step 1 - spelling/grammar gate.
+"""Check 1 - Spelling.
 
-Strategy
---------
-1. Detect named entities (people, locations) with a NER pipeline so
-   they're not flagged as misspellings.
-2. For every other alphabetic token, compare against
-   :class:`spellchecker.SpellChecker`'s correction.
-3. Pass if (misspelled / total) is below a configurable threshold.
+A real news headline shouldn't have many typos. We:
+
+1. Run a Named-Entity-Recognition (NER) model first to find names of
+   people and places. We DON'T spell-check those, because words like
+   "Modi" or "Tokyo" aren't in the dictionary.
+2. For every other alphabetic word, ask the spell checker if it has a
+   correction. If the corrected word differs from the original, count
+   it as a misspelling.
+3. Pass if (misspelled / total words) is below the configured threshold.
 """
 
-from __future__ import annotations
-
 import logging
-from typing import Dict, List
 
 from spellchecker import SpellChecker
 
@@ -27,29 +26,34 @@ log = logging.getLogger(__name__)
 class SpellingCheck(Check):
     name = "spelling"
 
-    # A handful of casual spellings the open-source SpellChecker doesn't
-    # normalize; the original code special-cased these.
-    _OWN_CORRECTIONS: Dict[str, str] = {"iam": "i'm", "im": "i'm"}
+    # Common informal spellings the open-source SpellChecker doesn't fix
+    # well on its own. The original code special-cased these too.
+    _OWN_CORRECTIONS = {"iam": "i'm", "im": "i'm"}
 
-    def run(self, headline: str) -> CheckResult:
+    def run(self, headline):
         cleaned = normalize_for_spellcheck(headline)
         tokens = cleaned.split(" ")
         named_entities = self._extract_named_entities(cleaned)
 
         spell = SpellChecker()
-        misspelled: List[str] = []
-        corrected_tokens: List[str] = []
+        misspelled = []
+        corrected_tokens = []
 
         for token in tokens:
-            if not (token.isalpha() and token not in named_entities):
+            # Skip non-alphabetic tokens and any word the NER model said
+            # is a person or location.
+            if (token.isalpha() and token in named_entities):
                 corrected_tokens.append(token)
                 continue
 
+            # Hand-rolled fixes for cases the library misses.
             if token in self._OWN_CORRECTIONS:
                 misspelled.append(token)
                 corrected_tokens.append(self._OWN_CORRECTIONS[token])
                 continue
 
+            # Ask the spell checker for a correction. If it differs from
+            # the original word, that means the original was a typo.
             corrected = spell.correction(token)
             if corrected and corrected != token:
                 misspelled.append(token)
@@ -64,21 +68,21 @@ class SpellingCheck(Check):
 
         log.info(
             "spelling: %d misspelled / %d words (ratio=%.2f, threshold=%.2f)",
-            len(misspelled),
-            word_count,
-            ratio,
-            threshold,
+            len(misspelled), word_count, ratio, threshold,
         )
+
+        if not misspelled:
+            detail = "no spelling issues"
+        else:
+            detail = (
+                f"{len(misspelled)} misspelled token(s) "
+                f"(ratio {ratio:.2f} vs threshold {threshold:.2f})"
+            )
 
         return CheckResult(
             name=self.name,
             passed=passed,
-            detail=(
-                "no spelling issues"
-                if not misspelled
-                else f"{len(misspelled)} misspelled token(s) "
-                f"(ratio {ratio:.2f} vs threshold {threshold:.2f})"
-            ),
+            detail=detail,
             metadata={
                 "misspelled": sorted(set(misspelled)),
                 "corrected": " ".join(corrected_tokens),
@@ -87,9 +91,11 @@ class SpellingCheck(Check):
         )
 
     @staticmethod
-    def _extract_named_entities(cleaned_lowercase_text: str) -> set:
-        # The NER model expects properly-cased tokens.
+    def _extract_named_entities(cleaned_lowercase_text):
+        """Run NER and return the set of words tagged as a Person or Location."""
+        # The NER model expects properly-cased tokens, so capitalize each word first.
         capitalised = " ".join(t.capitalize() for t in cleaned_lowercase_text.split())
+
         try:
             ner_results = get_ner_pipeline()(capitalised)
         except Exception:

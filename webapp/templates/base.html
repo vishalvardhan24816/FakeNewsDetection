@@ -19,7 +19,7 @@
 <body>
     <nav class="navbar navbar-expand-md navbar-dark fixed-top">
         <div class="container">
-            <a class="navbar-brand" href="{{ url_for('ui.index') }}">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
                 <i class="fas fa-shield-alt"></i>{{ brand }}
             </a>
             <button class="navbar-toggler" type="button"
@@ -31,13 +31,13 @@
             <div class="collapse navbar-collapse" id="navMain">
                 <ul class="navbar-nav ms-auto align-items-md-center">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('ui.index') }}">Home</a>
+                        <a class="nav-link" href="{{ url_for('index') }}">Home</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('ui.about') }}">How it works</a>
+                        <a class="nav-link" href="{{ url_for('about') }}">How it works</a>
                     </li>
                     <li class="nav-item ms-md-2">
-                        <a class="nav-link btn btn-primary px-3 py-2" href="{{ url_for('ui.detect') }}">
+                        <a class="nav-link btn btn-primary px-3 py-2" href="{{ url_for('detect') }}">
                             <i class="fas fa-search me-1"></i>Try it
                         </a>
                     </li>

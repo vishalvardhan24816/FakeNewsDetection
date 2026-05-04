@@ -1,9 +1,8 @@
 """The 5 individual validation checks.
 
-Each check is a class that inherits from :class:`Check` and implements
-``run(headline) -> CheckResult``. The orchestrator
-(:class:`fakenews_detector.validator.FakeNewsValidator`) runs them in
-sequence and short-circuits on the first failure.
+Every check is a small class with one method, `run(headline)`, that
+returns a `CheckResult`. The orchestrator (`FakeNewsValidator`) runs
+them one after another and stops at the first failure.
 """
 
 from fakenews_detector.checks.base import Check, CheckResult

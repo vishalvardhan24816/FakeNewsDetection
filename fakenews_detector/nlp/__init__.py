@@ -1,1 +1,1 @@
-"""NLP helpers (text preprocessing, sentence similarity)."""
+"""NLP helpers: text preprocessing + sentence similarity."""

@@ -1,1 +1,1 @@
-"""Model loading helpers (HuggingFace + custom pickled models)."""
+"""Loaders that build the heavy ML models once and cache them."""
